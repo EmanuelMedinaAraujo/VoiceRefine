@@ -1,0 +1,13 @@
+# Voice recordings and transcripts are personal data and never belong in this repository.
+data/
+*.wav
+*.flac
+*.ogg
+*.opus
+*.mp3
+*.sqlite
+*.sqlite-*
+*.db
+
+.venv/
+__pycache__/
