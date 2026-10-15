@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-// Status is what the bar widget shows.
+// Status is today's count, any pause and any saving fault.
 type Status struct {
 	Clips     int     `json:"clips"`   // saved today
 	Minutes   float64 `json:"minutes"` // of audio saved today

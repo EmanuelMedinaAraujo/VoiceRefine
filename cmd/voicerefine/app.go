@@ -150,13 +150,13 @@ func (a *App) discard(dir string) error {
 	})
 }
 
-// changed tells the bar widget to look again.
+// changed marks that a dictation was saved or fixed.
 func (a *App) changed() {
 	os.MkdirAll(a.Run, 0o700)
 	os.WriteFile(a.path("changed"), []byte(a.Now().Format(time.RFC3339Nano)+"\n"), 0o600)
 }
 
-// fail records a saving fault for the bar widget's warning colour. A later save clears it.
+// fail records a saving fault for 'voicerefine status'. A later save clears it.
 func (a *App) fail(err error) {
 	fmt.Fprintln(os.Stderr, "voicerefine:", err)
 	os.MkdirAll(a.Run, 0o700)

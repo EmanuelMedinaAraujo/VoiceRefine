@@ -39,11 +39,12 @@ EOF
   restart_voxtype=1
 fi
 
-# 3. The shell plugin, and its place in the bar next to the other widgets of this setup.
+# 3. The shell plugin with the fix window. Earlier versions also put a widget in the bar; take it out.
+rm -f "$plugin_dir/BarWidget.qml"
 install -Dm644 shell/emu.voicerefine/* -t "$plugin_dir"
-if [[ -f $shell_json ]] && ! jq -e '[.bar.layout[]?[]? | if type == "object" then .id else . end] | index("emu.voicerefine")' "$shell_json" >/dev/null; then
+if [[ -f $shell_json ]] && jq -e '[.bar.layout[]?[]? | if type == "object" then .id else . end] | index("emu.voicerefine")' "$shell_json" >/dev/null; then
   cp "$shell_json" "$shell_json.bak.$(date +%s)"
-  jq '.bar.layout.center += [{"id": "emu.voicerefine"}]' "$shell_json" >"$shell_json.new"
+  jq '.bar.layout |= map_values(map(select((if type == "object" then .id else . end) != "emu.voicerefine")))' "$shell_json" >"$shell_json.new"
   mv "$shell_json.new" "$shell_json"
 fi
 

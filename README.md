@@ -28,9 +28,7 @@ The numbers count up through the day. A take that gets no text (a cancel, a take
 
 ## Fixing a dictation
 
-F5, or a click on the bar widget, opens the fix window with the last dictation. Enter saves the fix as `corrected.txt`, Escape closes. The last dictation can be fixed until the next one starts. While the same window is still in front and the text is recent (20 s plus 0.1 s per character, at most 2 min), the fix replaces the typed text in the app; otherwise it goes to the clipboard. A dictation that is not fixed counts as correct.
-
-The bar widget shows today's dictations and minutes and flashes a check mark for each save. It dims with a pause sign in battery mode, during a meeting and with dictation off, and turns to the warning colour when saving fails or the keys no longer lead here.
+F5 opens the fix window with the last dictation. Enter saves the fix as `corrected.txt`, Escape closes. The last dictation can be fixed until the next one starts. While the same window is still in front and the text is recent (20 s plus 0.1 s per character, at most 2 min), the fix replaces the typed text in the app; otherwise it goes to the clipboard. A dictation that is not fixed counts as correct.
 
 ## How it works
 
@@ -45,9 +43,9 @@ key release ─► voicerefine key stop ──► pw-record stops ───► v
 
 - `voicerefine key` starts the recorder before it passes the key on to `voxtype-key`, so the clip holds everything Voxtype hears. When Voxtype first has to load its model, the clip keeps the whole sound and `info.txt` notes the wake-up.
 - `voicerefine tap` is Voxtype's `post_process` command. It hands the text back unchanged, with a 300 ms limit after which Voxtype types its own text anyway.
-- `voicerefine last` and `voicerefine fix` serve the fix window; `voicerefine status` serves the bar widget.
+- `voicerefine last` and `voicerefine fix` serve the fix window; `voicerefine status` prints today's count, any pause and any saving fault as JSON.
 - `voicerefine check` runs after each Omarchy update (`~/.config/omarchy/hooks/post-update.d/check-voicerefine.hook`) and two minutes after each login (`voicerefine-check.timer`). It only reports, with a notification, when the keys or the tap no longer lead here, when the Voxtype setup scripts changed (accept them with `voicerefine check --baseline`), and when Voxtype upstream merged its own audio saving ([PR #328](https://github.com/peteonrails/voxtype/pull/328), [issue #209](https://github.com/peteonrails/voxtype/issues/209)).
-- The shell plugin `emu.voicerefine` (in `shell/`) holds the bar widget and the fix window.
+- The shell plugin `emu.voicerefine` (in `shell/`) holds the fix window.
 
 The dictation keys live in the voxtype-setup block of [voxtype-bench](https://github.com/EmanuelMedinaAraujo/voxtype-bench) (`setup/hypr-bindings.lua`). It runs `voicerefine key` when `~/.local/bin/voicerefine` exists and `voxtype-key` otherwise, and adds the private keys and F5 only with VoiceRefine installed.
 

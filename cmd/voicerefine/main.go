@@ -15,7 +15,7 @@ const usage = `usage: voicerefine <command>
   tap             Voxtype's post_process command: copies each text aside, unchanged
   last [--opened] what the fix window shows: the last dictation, while it can still be fixed
   fix <dir>       saves the text on stdin as the fix, and puts it in the app when that is safe
-  status          what the bar widget shows, as JSON
+  status          today's count and any warning, as JSON
   check [--notify] [--baseline]
                   reports what an update broke or what upstream changed; never changes anything
 `
