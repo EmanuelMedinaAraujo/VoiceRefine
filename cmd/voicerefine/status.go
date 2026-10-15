@@ -68,7 +68,7 @@ func (a *App) paused() string {
 func (a *App) wiringProblems() []string {
 	var out []string
 	if ok, known := a.keysLeadHere(); known && !ok {
-		out = append(out, "The dictation keys no longer run VoiceRefine. Check the voxtype-setup block in ~/.config/hypr/bindings.lua.")
+		out = append(out, "The dictation keys do not run VoiceRefine. Re-run ~/Projects/voxtype-bench/setup/install.sh, or check the voxtype-setup block in ~/.config/hypr/bindings.lua.")
 	}
 	if config, _ := os.ReadFile(a.Vox.ConfigFile()); !strings.Contains(string(config), tapCommand) {
 		out = append(out, "Voxtype no longer hands its text to VoiceRefine. Re-run VoiceRefine's install.sh.")
