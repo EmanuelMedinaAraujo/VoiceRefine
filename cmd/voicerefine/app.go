@@ -125,9 +125,9 @@ func writeJSON(path string, v any) error {
 	return clip.WriteFileAtomic(path, append(data, '\n'))
 }
 
-func (a *App) pending() *Pending           { return readJSON[Pending](a.path("pending.json")) }
+func (a *App) pending() *Pending            { return readJSON[Pending](a.path("pending.json")) }
 func (a *App) savePending(p *Pending) error { return writeJSON(a.path("pending.json"), p) }
-func (a *App) last() *Last                 { return readJSON[Last](a.path("last.json")) }
+func (a *App) last() *Last                  { return readJSON[Last](a.path("last.json")) }
 func (a *App) saveLast(l *Last) error       { return writeJSON(a.path("last.json"), l) }
 
 // discardLocked deletes the waiting folder: the dictation never got its text.

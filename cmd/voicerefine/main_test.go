@@ -2,6 +2,9 @@ package main
 
 import (
 	"bytes"
+	"errors"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -47,15 +50,19 @@ func (r *fakeRecorder) Wait(int, time.Duration) bool { return true }
 
 // rig is a fake Voxtype: its voxtype-key moves the state file the way the daemon does.
 type rig struct {
-	t        *testing.T
-	a        *App
-	rec      *fakeRecorder
-	asleep   bool // the next start first wakes the daemon, like after an idle unload
-	mu       sync.Mutex
-	commands []string
+	t         *testing.T
+	a         *App
+	rec       *fakeRecorder
+	asleep    bool // the next start first wakes the daemon, like after an idle unload
+	mu        sync.Mutex
+	commands  []string
 	typed     []string
 	window    string // the focused window's Hyprland address
 	clipboard string
+	binds     string // hyprctl binds -j
+	off       bool   // voxtype-mode off
+	nextMode  string // what voxtype-daemon --which says
+	notified  []string
 }
 
 func newRig(t *testing.T) *rig {
@@ -73,6 +80,9 @@ func newRig(t *testing.T) *rig {
 	r.setState("idle")
 	r.write("voxtype-power-mode", "power")
 	t.Setenv("VOXTYPE_ENGINE", "cohere")
+	r.binds = `[{"key": "F9", "modmask": 0, "release": false, "description": "Start dictation (push-to-talk, saved by VoiceRefine)"}]`
+	r.nextMode = "power"
+	os.WriteFile(vox.ConfigFile(), []byte("[cohere]\nmodel = \"cohere-transcribe-q4\"\n\n[output.post_process]\ncommand = \"/home/x/.local/bin/voicerefine tap\"\n"), 0o600)
 	return r
 }
 
@@ -101,7 +111,18 @@ func (r *rig) command(stdin, name string, args ...string) (string, error) {
 			r.setState("idle")
 		}
 	case "hyprctl":
+		if args[0] == "binds" {
+			return r.binds, nil
+		}
 		return `{"address": "` + r.window + `"}`, nil
+	case "systemctl":
+		if r.off {
+			return "", errors.New("inactive")
+		}
+	case "voxtype-daemon":
+		return r.nextMode + "\n", nil
+	case "notify-send":
+		r.notified = append(r.notified, strings.Join(args, " "))
 	case "wtype":
 		r.typed = append(r.typed, strings.Join(args, " ")+stdin)
 	case "wl-copy":
@@ -385,5 +406,99 @@ func TestAnEmptyFixChangesNothing(t *testing.T) {
 	r.fix(dir, "  \n")
 	if _, ok := clip.ReadText(dir, clip.CorrectedFile); ok || len(r.typed) != 0 {
 		t.Fatal("an emptied box was saved as a fix")
+	}
+}
+
+func (r *rig) status() Status { return r.a.status() }
+
+func TestStatusCountsTodayAndExplainsPauses(t *testing.T) {
+	r := newRig(t)
+	dictate(r, "One.")
+	dictate(r, "Two.")
+	s := r.status()
+	if s.Clips != 2 || s.Minutes != 2.0/60 || s.LastSaved == "" || s.Paused != "" || s.Warning != "" || s.Recording {
+		t.Fatalf("status = %+v", s)
+	}
+
+	r.key("start", "en")
+	if !r.status().Recording {
+		t.Fatal("not shown as recording")
+	}
+	r.key("cancel", "en")
+
+	r.write("voxtype-power-mode", "battery")
+	if p := r.status().Paused; p != "battery" {
+		t.Fatalf("paused %q in battery mode", p)
+	}
+	os.Remove(r.a.Vox.StateFile()) // unloaded: the next dictation decides
+	if p := r.status().Paused; p != "" {
+		t.Fatalf("paused %q although the next dictation loads in power mode", p)
+	}
+	r.off = true
+	if p := r.status().Paused; p != "off" {
+		t.Fatalf("paused %q with dictation off", p)
+	}
+}
+
+func TestStatusWarnsWhenTheKeysOrTheTapLeadElsewhere(t *testing.T) {
+	r := newRig(t)
+	r.binds = `[{"key": "F9", "modmask": 0, "release": false, "description": "Start dictation (push-to-talk)"}]`
+	if w := r.status().Warning; !strings.Contains(w, "keys") {
+		t.Fatalf("warning %q", w)
+	}
+	r.binds = "not running"
+	os.WriteFile(r.a.Vox.ConfigFile(), []byte("[cohere]\n"), 0o600)
+	if w := r.status().Warning; !strings.Contains(w, "text") || strings.Contains(w, "keys") {
+		t.Fatalf("warning %q", w)
+	}
+}
+
+func TestStatusWarnsAfterASavingFault(t *testing.T) {
+	r := newRig(t)
+	r.a.fail(errors.New("disk full"))
+	if w := r.status().Warning; w != "Saving failed: disk full" {
+		t.Fatalf("warning %q", w)
+	}
+	dictate(r, "Saved again.")
+	if w := r.status().Warning; w != "" {
+		t.Fatalf("a good save left the warning %q", w)
+	}
+}
+
+func TestCheckReportsChangedScriptsAndUpstreamNews(t *testing.T) {
+	r := newRig(t)
+	os.MkdirAll(r.a.Vox.Bin, 0o700)
+	os.WriteFile(filepath.Join(r.a.Vox.Bin, "voxtype-key"), []byte("#!/bin/bash\n"), 0o700)
+	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/repos/peteonrails/voxtype/pulls/328":
+			w.Write([]byte(`{"merged": true}`))
+		case "/repos/peteonrails/voxtype/issues/209":
+			w.Write([]byte(`{"state": "open"}`))
+		}
+	}))
+	defer api.Close()
+	githubAPI = api.URL + "/"
+
+	check := func(args ...string) string {
+		var out bytes.Buffer
+		r.a.Out = &out
+		if err := r.a.check(args); err != nil {
+			t.Fatal(err)
+		}
+		return out.String()
+	}
+	check("--baseline")
+	out := check("--notify")
+	if !strings.Contains(out, "PR 328") || strings.Contains(out, "issue 209") || strings.Contains(out, "scripts changed") {
+		t.Fatalf("check = %s", out)
+	}
+	if len(r.notified) != 1 {
+		t.Fatalf("notified %d times", len(r.notified))
+	}
+
+	os.WriteFile(filepath.Join(r.a.Vox.Bin, "voxtype-key"), []byte("#!/bin/bash\necho changed\n"), 0o700)
+	if out := check(); !strings.Contains(out, "scripts changed (voxtype-key)") {
+		t.Fatalf("check = %s", out)
 	}
 }
