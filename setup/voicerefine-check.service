@@ -1,0 +1,6 @@
+[Unit]
+Description=Report whether VoiceRefine still saves dictations
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/voicerefine check --notify

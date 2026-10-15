@@ -1,0 +1,8 @@
+[Unit]
+Description=Run the VoiceRefine check once after each login, which also catches updates made with yay or pacman
+
+[Timer]
+OnStartupSec=2min
+
+[Install]
+WantedBy=timers.target

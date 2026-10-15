@@ -1,0 +1,7 @@
+#!/bin/bash
+
+# Reports after each Omarchy update whether VoiceRefine still saves dictations, and whether
+# upstream Voxtype caught up. It only reports; it never changes anything.
+
+[[ -x $HOME/.local/bin/voicerefine ]] || exit 0
+"$HOME/.local/bin/voicerefine" check --notify || true
