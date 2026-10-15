@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "emu.voicerefine",
+  "name": "VoiceRefine",
+  "version": "1.0.0",
+  "author": "emu",
+  "description": "Shows the dictations VoiceRefine saved today, and the window to fix the last one.",
+  "kinds": [
+    "bar-widget",
+    "overlay"
+  ],
+  "keepLoaded": true,
+  "entryPoints": {
+    "barWidget": "BarWidget.qml",
+    "overlay": "FixWindow.qml"
+  },
+  "barWidget": {
+    "displayName": "VoiceRefine",
+    "description": "Today's saved dictations, a flash for each save, and a click to fix the last one.",
+    "category": "System",
+    "allowMultiple": false
+  }
+}
