@@ -130,3 +130,44 @@ func (a *App) github(path string, v any) bool {
 	defer resp.Body.Close()
 	return resp.StatusCode == http.StatusOK && json.NewDecoder(resp.Body).Decode(v) == nil
 }
+
+// wiringProblems finds what stops saving without any error: the keys or the tap no longer lead
+// to VoiceRefine.
+func (a *App) wiringProblems() []string {
+	var out []string
+	if ok, known := a.keysLeadHere(); known && !ok {
+		out = append(out, "The dictation keys do not run VoiceRefine. Re-run ~/Projects/voxtype-bench/setup/install.sh, or check the voxtype-setup block in ~/.config/hypr/bindings.lua.")
+	}
+	if config, _ := os.ReadFile(a.Vox.ConfigFile()); !strings.Contains(string(config), tapCommand) {
+		out = append(out, "Voxtype no longer hands its text to VoiceRefine. Re-run VoiceRefine's install.sh.")
+	}
+	return out
+}
+
+// tapCommand is how install.sh adds the tap to Voxtype's config; the check looks for it.
+const tapCommand = "voicerefine tap"
+
+// keysLeadHere reads Hyprland's key list. Lua bindings do not show their command there, so the
+// voxtype-setup block names VoiceRefine in the descriptions of the keys it routes here.
+// known is false when Hyprland cannot be asked, for example before the session runs.
+func (a *App) keysLeadHere() (ok, known bool) {
+	out, err := a.Command("", "hyprctl", "binds", "-j")
+	if err != nil {
+		return false, false
+	}
+	var binds []struct {
+		Key         string `json:"key"`
+		Modmask     int    `json:"modmask"`
+		Release     bool   `json:"release"`
+		Description string `json:"description"`
+	}
+	if json.Unmarshal([]byte(out), &binds) != nil {
+		return false, false
+	}
+	for _, b := range binds {
+		if b.Key == "F9" && b.Modmask == 0 && !b.Release {
+			return strings.Contains(b.Description, "VoiceRefine"), true
+		}
+	}
+	return false, true
+}

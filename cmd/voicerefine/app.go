@@ -150,18 +150,9 @@ func (a *App) discard(dir string) error {
 	})
 }
 
-// changed marks that a dictation was saved or fixed.
-func (a *App) changed() {
-	os.MkdirAll(a.Run, 0o700)
-	os.WriteFile(a.path("changed"), []byte(a.Now().Format(time.RFC3339Nano)+"\n"), 0o600)
-}
-
-// fail records a saving fault for 'voicerefine status'. A later save clears it.
+// fail reports a saving fault on stderr.
 func (a *App) fail(err error) {
 	fmt.Fprintln(os.Stderr, "voicerefine:", err)
-	os.MkdirAll(a.Run, 0o700)
-	os.WriteFile(a.path("error"), []byte(err.Error()+"\n"), 0o600)
-	a.changed()
 }
 
 // Recorder records the default microphone to a raw file in the background.

@@ -75,9 +75,7 @@ func (a *App) save(text string) error {
 		return err
 	}
 	os.Remove(a.path("pending.json"))
-	os.Remove(a.path("error"))
 	a.saveLast(&Last{Dir: p.Dir, InApp: text, Window: a.activeWindow(), TypedAt: a.Now()})
-	a.changed()
 	return nil
 }
 

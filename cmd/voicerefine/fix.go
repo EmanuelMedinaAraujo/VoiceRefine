@@ -127,7 +127,6 @@ func (a *App) fix(args []string) error {
 		a.fail(err)
 		return err
 	}
-	a.changed()
 	if replace == nil {
 		return nil
 	}

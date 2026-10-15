@@ -52,7 +52,6 @@ func (a *App) keyStart(action, language string, private bool) error {
 	// Every start counts, the private ones too: the last dictation can only be fixed until the next starts.
 	os.MkdirAll(a.Run, 0o700)
 	os.WriteFile(a.path("last-press"), []byte(a.Now().Format(time.RFC3339Nano)+"\n"), 0o600)
-	a.changed()
 
 	state, _ := a.Vox.State()
 	// Voxtype ignores a start while it records or transcribes. During a meeting it dictates in the

@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -60,8 +59,6 @@ type rig struct {
 	window    string // the focused window's Hyprland address
 	clipboard string
 	binds     string // hyprctl binds -j
-	off       bool   // voxtype-mode off
-	nextMode  string // what voxtype-daemon --which says
 	notified  []string
 }
 
@@ -81,7 +78,6 @@ func newRig(t *testing.T) *rig {
 	r.write("voxtype-power-mode", "power")
 	t.Setenv("VOXTYPE_ENGINE", "cohere")
 	r.binds = `[{"key": "F9", "modmask": 0, "release": false, "description": "Start dictation (push-to-talk, saved by VoiceRefine)"}]`
-	r.nextMode = "power"
 	os.WriteFile(vox.ConfigFile(), []byte("[cohere]\nmodel = \"cohere-transcribe-q4\"\n\n[output.post_process]\ncommand = \"/home/x/.local/bin/voicerefine tap\"\n"), 0o600)
 	return r
 }
@@ -115,12 +111,6 @@ func (r *rig) command(stdin, name string, args ...string) (string, error) {
 			return r.binds, nil
 		}
 		return `{"address": "` + r.window + `"}`, nil
-	case "systemctl":
-		if r.off {
-			return "", errors.New("inactive")
-		}
-	case "voxtype-daemon":
-		return r.nextMode + "\n", nil
 	case "notify-send":
 		r.notified = append(r.notified, strings.Join(args, " "))
 	case "wtype":
@@ -409,59 +399,19 @@ func TestAnEmptyFixChangesNothing(t *testing.T) {
 	}
 }
 
-func (r *rig) status() Status { return r.a.status() }
-
-func TestStatusCountsTodayAndExplainsPauses(t *testing.T) {
+func TestWiringProblemsFindKeysOrATapThatLeadElsewhere(t *testing.T) {
 	r := newRig(t)
-	dictate(r, "One.")
-	dictate(r, "Two.")
-	s := r.status()
-	if s.Clips != 2 || s.Minutes != 2.0/60 || s.LastSaved == "" || s.Paused != "" || s.Warning != "" || s.Recording {
-		t.Fatalf("status = %+v", s)
+	if p := r.a.wiringProblems(); len(p) != 0 {
+		t.Fatalf("problems %q", p)
 	}
-
-	r.key("start", "en")
-	if !r.status().Recording {
-		t.Fatal("not shown as recording")
-	}
-	r.key("cancel", "en")
-
-	r.write("voxtype-power-mode", "battery")
-	if p := r.status().Paused; p != "battery" {
-		t.Fatalf("paused %q in battery mode", p)
-	}
-	os.Remove(r.a.Vox.StateFile()) // unloaded: the next dictation decides
-	if p := r.status().Paused; p != "" {
-		t.Fatalf("paused %q although the next dictation loads in power mode", p)
-	}
-	r.off = true
-	if p := r.status().Paused; p != "off" {
-		t.Fatalf("paused %q with dictation off", p)
-	}
-}
-
-func TestStatusWarnsWhenTheKeysOrTheTapLeadElsewhere(t *testing.T) {
-	r := newRig(t)
 	r.binds = `[{"key": "F9", "modmask": 0, "release": false, "description": "Start dictation (push-to-talk)"}]`
-	if w := r.status().Warning; !strings.Contains(w, "keys") {
-		t.Fatalf("warning %q", w)
+	if p := strings.Join(r.a.wiringProblems(), "\n"); !strings.Contains(p, "keys") {
+		t.Fatalf("problems %q", p)
 	}
 	r.binds = "not running"
 	os.WriteFile(r.a.Vox.ConfigFile(), []byte("[cohere]\n"), 0o600)
-	if w := r.status().Warning; !strings.Contains(w, "text") || strings.Contains(w, "keys") {
-		t.Fatalf("warning %q", w)
-	}
-}
-
-func TestStatusWarnsAfterASavingFault(t *testing.T) {
-	r := newRig(t)
-	r.a.fail(errors.New("disk full"))
-	if w := r.status().Warning; w != "Saving failed: disk full" {
-		t.Fatalf("warning %q", w)
-	}
-	dictate(r, "Saved again.")
-	if w := r.status().Warning; w != "" {
-		t.Fatalf("a good save left the warning %q", w)
+	if p := strings.Join(r.a.wiringProblems(), "\n"); !strings.Contains(p, "text") || strings.Contains(p, "keys") {
+		t.Fatalf("problems %q", p)
 	}
 }
 

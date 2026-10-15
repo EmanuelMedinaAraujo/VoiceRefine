@@ -43,7 +43,7 @@ key release ─► voicerefine key stop ──► pw-record stops ───► v
 
 - `voicerefine key` starts the recorder before it passes the key on to `voxtype-key`, so the clip holds everything Voxtype hears. When Voxtype first has to load its model, the clip keeps the whole sound and `info.txt` notes the wake-up.
 - `voicerefine tap` is Voxtype's `post_process` command. It hands the text back unchanged, with a 300 ms limit after which Voxtype types its own text anyway.
-- `voicerefine last` and `voicerefine fix` serve the fix window; `voicerefine status` prints today's count, any pause and any saving fault as JSON.
+- `voicerefine last` and `voicerefine fix` serve the fix window.
 - `voicerefine check` runs after each Omarchy update (`~/.config/omarchy/hooks/post-update.d/check-voicerefine.hook`) and two minutes after each login (`voicerefine-check.timer`). It only reports, with a notification, when the keys or the tap no longer lead here, when the Voxtype setup scripts changed (accept them with `voicerefine check --baseline`), and when Voxtype upstream merged its own audio saving ([PR #328](https://github.com/peteonrails/voxtype/pull/328), [issue #209](https://github.com/peteonrails/voxtype/issues/209)).
 - The shell plugin `emu.voicerefine` (in `shell/`) holds the fix window.
 

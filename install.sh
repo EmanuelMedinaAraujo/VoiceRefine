@@ -8,7 +8,6 @@ cd "$(dirname "$0")"
 bin=~/.local/bin/voicerefine
 voxtype_config=~/.config/voxtype/config.toml
 plugin_dir=~/.config/omarchy/plugins/emu.voicerefine
-shell_json=~/.config/omarchy/shell.json
 hooks=~/.config/omarchy/hooks/post-update.d
 units=~/.config/systemd/user
 
@@ -39,14 +38,8 @@ EOF
   restart_voxtype=1
 fi
 
-# 3. The shell plugin with the fix window. Earlier versions also put a widget in the bar; take it out.
-rm -f "$plugin_dir/BarWidget.qml"
+# 3. The shell plugin with the fix window.
 install -Dm644 shell/emu.voicerefine/* -t "$plugin_dir"
-if [[ -f $shell_json ]] && jq -e '[.bar.layout[]?[]? | if type == "object" then .id else . end] | index("emu.voicerefine")' "$shell_json" >/dev/null; then
-  cp "$shell_json" "$shell_json.bak.$(date +%s)"
-  jq '.bar.layout |= map_values(map(select((if type == "object" then .id else . end) != "emu.voicerefine")))' "$shell_json" >"$shell_json.new"
-  mv "$shell_json.new" "$shell_json"
-fi
 
 # 4. The update check: after each Omarchy update, and once after each login.
 install -Dm755 setup/check-voicerefine.hook -t "$hooks"

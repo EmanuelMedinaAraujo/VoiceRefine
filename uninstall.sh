@@ -4,18 +4,12 @@ set -uo pipefail
 
 bin=~/.local/bin/voicerefine
 voxtype_config=~/.config/voxtype/config.toml
-shell_json=~/.config/omarchy/shell.json
 
 systemctl --user disable -q --now voicerefine-check.timer 2>/dev/null
 rm -f ~/.config/systemd/user/voicerefine-check.{service,timer}
 systemctl --user daemon-reload
 rm -f ~/.config/omarchy/hooks/post-update.d/check-voicerefine.hook
 
-if [[ -f $shell_json ]] && jq -e '[.bar.layout[]?[]? | if type == "object" then .id else . end] | index("emu.voicerefine")' "$shell_json" >/dev/null; then
-  cp "$shell_json" "$shell_json.bak.$(date +%s)"
-  jq '.bar.layout |= map_values(map(select((if type == "object" then .id else . end) != "emu.voicerefine")))' "$shell_json" >"$shell_json.new"
-  mv "$shell_json.new" "$shell_json"
-fi
 rm -rf ~/.config/omarchy/plugins/emu.voicerefine
 
 if grep -q '^# voicerefine begin' "$voxtype_config"; then
