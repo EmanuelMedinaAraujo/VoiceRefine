@@ -13,6 +13,8 @@ const usage = `usage: voicerefine <command>
   key [--private] <start|stop|toggle|cancel> [language]
                   what the dictation keys run: records, then passes the key on to voxtype-key
   tap             Voxtype's post_process command: copies each text aside, unchanged
+  last [--opened] what the fix window shows: the last dictation, while it can still be fixed
+  fix <dir>       saves the text on stdin as the fix, and puts it in the app when that is safe
 `
 
 func main() {
@@ -27,6 +29,10 @@ func main() {
 		err = a.key(args)
 	case "tap":
 		err = a.tap()
+	case "last":
+		err = a.lastCmd(args)
+	case "fix":
+		err = a.fix(args)
 	default:
 		err = errUsage
 	}

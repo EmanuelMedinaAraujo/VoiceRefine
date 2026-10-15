@@ -53,12 +53,14 @@ type rig struct {
 	asleep   bool // the next start first wakes the daemon, like after an idle unload
 	mu       sync.Mutex
 	commands []string
-	typed    []string
+	typed     []string
+	window    string // the focused window's Hyprland address
+	clipboard string
 }
 
 func newRig(t *testing.T) *rig {
 	root := t.TempDir()
-	r := &rig{t: t, rec: &fakeRecorder{alive: map[int]bool{}}}
+	r := &rig{t: t, rec: &fakeRecorder{alive: map[int]bool{}}, window: "0xabc"}
 	vox := voxtype.Paths{Runtime: filepath.Join(root, "run"), Config: filepath.Join(root, "config"), Bin: filepath.Join(root, "bin")}
 	os.MkdirAll(filepath.Join(vox.Runtime, "voxtype"), 0o700)
 	os.MkdirAll(vox.Config, 0o700)
@@ -99,9 +101,11 @@ func (r *rig) command(stdin, name string, args ...string) (string, error) {
 			r.setState("idle")
 		}
 	case "hyprctl":
-		return `{"address": "0xabc"}`, nil
+		return `{"address": "` + r.window + `"}`, nil
 	case "wtype":
-		r.typed = append(r.typed, strings.Join(args, " "))
+		r.typed = append(r.typed, strings.Join(args, " ")+stdin)
+	case "wl-copy":
+		r.clipboard = stdin
 	}
 	return "", nil
 }
@@ -286,5 +290,100 @@ func TestTheTapPassesTextThroughWithoutADictation(t *testing.T) {
 	r.tap("Typed by a meeting or a private key.")
 	if r.folders() != 0 {
 		t.Fatal("tap saved text with no folder waiting")
+	}
+}
+
+func (r *rig) fix(dir, text string) {
+	r.a.In = strings.NewReader(text)
+	if err := r.a.fix([]string{dir}); err != nil {
+		r.t.Fatal(err)
+	}
+}
+
+func (r *rig) lastOut(args ...string) string {
+	var out bytes.Buffer
+	r.a.Out = &out
+	if err := r.a.lastCmd(args); err != nil {
+		r.t.Fatal(err)
+	}
+	return out.String()
+}
+
+func dictate(r *rig, text string) string {
+	r.key("start", "en")
+	r.release(text, "stop", "en")
+	return r.a.last().Dir
+}
+
+func TestFixReplacesTheTextInTheSameWindow(t *testing.T) {
+	r := newRig(t)
+	dir := dictate(r, "Helo wörld")
+	if out := r.lastOut("--opened"); !strings.Contains(out, `"fixable":true`) || !strings.Contains(out, "Helo wörld") {
+		t.Fatalf("last = %s", out)
+	}
+	r.fix(dir, "Hello world\n")
+
+	if text, _ := clip.ReadText(dir, clip.CorrectedFile); text != "Hello world" {
+		t.Fatalf("corrected.txt = %q", text)
+	}
+	info, _ := clip.ReadInfo(dir)
+	if info.Status != clip.Corrected || !info.FixOpened {
+		t.Fatalf("info = %+v", info)
+	}
+	if len(r.typed) != 2 || strings.Count(r.typed[0], "BackSpace") != 10 || r.typed[1] != "-d 1 -Hello world" {
+		t.Fatalf("typed = %q, want 10 backspaces then the fix", r.typed)
+	}
+	if l := r.a.last(); l.InApp != "Hello world" {
+		t.Fatalf("the app now holds %q", l.InApp)
+	}
+	// Fixing again replaces the fixed text, and fixing back to the model's text undoes the fix.
+	r.fix(dir, "Helo wörld")
+	if _, ok := clip.ReadText(dir, clip.CorrectedFile); ok {
+		t.Fatal("corrected.txt kept after fixing back to the transcribed text")
+	}
+	if info, _ := clip.ReadInfo(dir); info.Status != clip.Untouched {
+		t.Fatalf("status %s", info.Status)
+	}
+}
+
+func TestFixInAnotherWindowGoesToTheClipboard(t *testing.T) {
+	r := newRig(t)
+	dir := dictate(r, "Helo")
+	r.window = "0xother"
+	r.fix(dir, "Hello")
+	if len(r.typed) != 0 || r.clipboard != "Hello" {
+		t.Fatalf("typed %q, clipboard %q", r.typed, r.clipboard)
+	}
+	if text, _ := clip.ReadText(dir, clip.CorrectedFile); text != "Hello" {
+		t.Fatal("the fix was not saved")
+	}
+}
+
+func TestFixAfterTheTimeLimitGoesToTheClipboard(t *testing.T) {
+	r := newRig(t)
+	dir := dictate(r, "Helo")
+	r.a.Now = func() time.Time { return time.Now().Add(replaceLimit("Helo") + time.Second) }
+	r.fix(dir, "Hello")
+	if len(r.typed) != 0 || r.clipboard != "Hello" {
+		t.Fatalf("typed %q, clipboard %q", r.typed, r.clipboard)
+	}
+}
+
+func TestOnlyTheLastDictationCanBeFixed(t *testing.T) {
+	r := newRig(t)
+	dictate(r, "First.")
+	r.key("--private", "start", "en") // even a private dictation ends the chance to fix
+	r.release("Private.", "stop", "en")
+	if out := r.lastOut(); !strings.Contains(out, `"fixable":false`) {
+		t.Fatalf("last = %s", out)
+	}
+}
+
+func TestAnEmptyFixChangesNothing(t *testing.T) {
+	r := newRig(t)
+	dir := dictate(r, "Text.")
+	r.fix(dir, "  \n")
+	if _, ok := clip.ReadText(dir, clip.CorrectedFile); ok || len(r.typed) != 0 {
+		t.Fatal("an emptied box was saved as a fix")
 	}
 }
