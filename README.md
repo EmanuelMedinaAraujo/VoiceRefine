@@ -60,6 +60,10 @@ Needs Go, `pw-record` (PipeWire), `wtype`, `wl-copy` and `jq`, all present on Om
 
 Run voxtype-bench's `setup/install.sh` once so its key block is the one that knows about VoiceRefine. There is no backup of the clips: they exist only on this laptop.
 
+## Windows
+
+`win/` builds the same dictation and saving for Windows as a single `VoiceRefine.exe`, with Voxtype's Whisper engine built in and no meetings. See [win/README.md](win/README.md).
+
 ## Development
 
 ```
