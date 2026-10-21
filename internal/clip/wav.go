@@ -1,6 +1,7 @@
 package clip
 
 import (
+	"bytes"
 	"encoding/binary"
 	"io"
 	"os"
@@ -57,6 +58,15 @@ func RawToWAV(rawPath, wavPath string, limit time.Duration) (time.Duration, erro
 		return 0, err
 	}
 	return RawDuration(n), os.Rename(tmp, wavPath)
+}
+
+// EncodeWAV wraps raw samples held in memory in a WAV header, the same file RawToWAV writes.
+func EncodeWAV(pcm []byte) []byte {
+	pcm = pcm[:len(pcm)-len(pcm)%bytesPerSample]
+	var b bytes.Buffer
+	writeHeader(&b, int64(len(pcm)))
+	b.Write(pcm)
+	return b.Bytes()
 }
 
 func writeHeader(w io.Writer, dataBytes int64) error {

@@ -110,3 +110,19 @@ func TestRawToWAVWritesHeaderAndCuts(t *testing.T) {
 		t.Fatalf("uncut length %v, want 2s without the stray byte", length)
 	}
 }
+
+func TestEncodeWAVMatchesRawToWAV(t *testing.T) {
+	dir := t.TempDir()
+	raw := filepath.Join(dir, RawFile)
+	wav := filepath.Join(dir, AudioFile)
+	samples := make([]byte, SampleRate*bytesPerSample/2+1)
+	for i := range samples {
+		samples[i] = byte(i * 7)
+	}
+	os.WriteFile(raw, samples, 0o600)
+	RawToWAV(raw, wav, 0)
+	want, _ := os.ReadFile(wav)
+	if got := EncodeWAV(samples); !bytes.Equal(got, want) {
+		t.Fatalf("EncodeWAV gives %d bytes, RawToWAV %d", len(got), len(want))
+	}
+}
