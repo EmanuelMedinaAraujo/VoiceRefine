@@ -105,6 +105,38 @@ func (a *App) fixKey(args []string) error {
 	return err
 }
 
+// acceptKey is what Shift+F5 runs. While F5 would open the fix window, it marks the last
+// dictation as read and right: untouched becomes verified, a fix stays corrected. Otherwise
+// Shift+F5 goes on to the app, so a browser still reloads with it.
+func (a *App) acceptKey(args []string) error {
+	if len(args) != 0 {
+		return errUsage
+	}
+	var accepted bool
+	err := a.locked(func() error {
+		l, _ := a.fixable()
+		if l == nil || !a.inTime(l) || a.activeWindow() != l.Window {
+			return nil
+		}
+		accepted = true
+		return clip.UpdateInfo(l.Dir, func(i *clip.Info) {
+			if i.Status == clip.Untouched {
+				i.Status = clip.Verified
+			}
+		})
+	})
+	if err != nil {
+		a.fail(err)
+		return err
+	}
+	if accepted {
+		a.Command("", "notify-send", "-t", "1500", "Accepted", "The last dictation counts as right.")
+		return nil
+	}
+	_, err = a.Command("", "hyprctl", "dispatch", `hl.dsp.send_shortcut({ mods = "SHIFT", key = "F5" })`)
+	return err
+}
+
 // fix saves the text read from stdin as the dictation's correct text, and puts it in the app.
 //
 //	voicerefine fix <dir> < text

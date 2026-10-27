@@ -15,6 +15,8 @@ const usage = `usage: voicerefine <command>
   tap             Voxtype's post_process command: copies each text aside, unchanged
   fixkey          what F5 runs: opens the fix window while the fix can replace the typed text,
                   and otherwise passes F5 on to the app
+  acceptkey       what Shift+F5 runs: marks the last dictation as right while F5 would open the
+                  fix window, and otherwise passes Shift+F5 on to the app
   last [--opened] what the fix window shows: the last dictation, while it can still be fixed
   fix <dir>       saves the text on stdin as the fix, and puts it in the app when that is safe
   check [--notify] [--baseline]
@@ -35,6 +37,8 @@ func main() {
 		err = a.tap()
 	case "fixkey":
 		err = a.fixKey(args)
+	case "acceptkey":
+		err = a.acceptKey(args)
 	case "last":
 		err = a.lastCmd(args)
 	case "fix":

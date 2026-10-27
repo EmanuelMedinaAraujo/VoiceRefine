@@ -347,6 +347,33 @@ func (d *Dictation) Fix(dir, text string) error {
 	return nil
 }
 
+// Accept marks the last dictation as read and right while F5 would open the fix window:
+// untouched becomes verified, a fix stays corrected.
+func (d *Dictation) Accept() {
+	d.mu.Lock()
+	l, lastPress := d.last, d.lastPress
+	d.mu.Unlock()
+	if l == nil || !d.inTime(*l, lastPress) || d.Desktop.Foreground() != l.Window {
+		return
+	}
+	d.mu.Lock()
+	if d.last != l || d.lastPress.After(l.TypedAt) {
+		d.mu.Unlock()
+		return // a dictation started in between
+	}
+	err := clip.UpdateInfo(l.Dir, func(i *clip.Info) {
+		if i.Status == clip.Untouched {
+			i.Status = clip.Verified
+		}
+	})
+	d.mu.Unlock()
+	if err != nil {
+		d.Desktop.Notify("The dictation was not accepted", err.Error())
+		return
+	}
+	d.Desktop.Notify("Accepted", "The last dictation counts as right.")
+}
+
 // FixKey is true while F5 opens the fix window: while the fix can replace the typed text, with
 // the same window in front, no dictation since, and the text recent. The keyboard hook asks it.
 func (d *Dictation) FixKey() bool {

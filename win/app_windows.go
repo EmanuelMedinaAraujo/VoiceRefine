@@ -16,7 +16,7 @@ import (
 )
 
 const keysHelp = "Hold F9 (English) or F10 (German) while you speak. Win+F9 and Win+F10 save nothing. " +
-	"Ctrl+Win+X and Ctrl+Win+Alt+X start and stop. F5 fixes the last dictation right after it was typed."
+	"Ctrl+Win+X and Ctrl+Win+Alt+X start and stop. F5 fixes the last dictation right after it was typed, Shift+F5 accepts it as right."
 
 func run() {
 	runtime.LockOSThread() // windows, the tray and the keyboard hook belong to this thread

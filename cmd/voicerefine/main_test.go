@@ -420,6 +420,39 @@ func TestF5OpensTheFixOnlyWhileItCanReplaceTheText(t *testing.T) {
 	}
 }
 
+func TestShiftF5AcceptsOnlyWhileF5WouldOpenTheFix(t *testing.T) {
+	const pass = `hyprctl dispatch hl.dsp.send_shortcut({ mods = "SHIFT", key = "F5" })`
+	for _, tc := range []struct {
+		name   string
+		setup  func(r *rig)
+		status string
+		passed bool
+	}{
+		{"just typed", func(r *rig) {}, clip.Verified, false},
+		{"another window", func(r *rig) { r.window = "0xother" }, clip.Untouched, true},
+		{"too late", func(r *rig) {
+			r.a.Now = func() time.Time { return time.Now().Add(replaceLimit("Helo") + time.Second) }
+		}, clip.Untouched, true},
+		{"fixed first", func(r *rig) { r.fix(r.a.last().Dir, "Hello") }, clip.Corrected, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			r := newRig(t)
+			dir := dictate(r, "Helo")
+			tc.setup(r)
+			r.commands = nil
+			if err := r.a.acceptKey(nil); err != nil {
+				t.Fatal(err)
+			}
+			if info, _ := clip.ReadInfo(dir); info.Status != tc.status {
+				t.Fatalf("status %s, want %s", info.Status, tc.status)
+			}
+			if got := strings.Join(r.commands, "|"); strings.Contains(got, pass) != tc.passed {
+				t.Fatalf("Shift+F5 ran %q, passed on: want %v", got, tc.passed)
+			}
+		})
+	}
+}
+
 func TestAnEmptyFixChangesNothing(t *testing.T) {
 	r := newRig(t)
 	dir := dictate(r, "Text.")

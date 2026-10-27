@@ -271,6 +271,32 @@ func TestFixGoesToTheClipboardInAnotherWindow(t *testing.T) {
 	}
 }
 
+func TestAcceptVerifiesOnlyWhileF5WouldOpenTheFix(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		setup  func(r *rig)
+		status string
+	}{
+		{"just typed", func(r *rig) {}, clip.Verified},
+		{"another window", func(r *rig) { r.desk.window = 0xdef }, clip.Untouched},
+		{"too late", func(r *rig) {
+			r.d.Now = func() time.Time { return time.Now().Add(replaceMax + time.Second) }
+		}, clip.Untouched},
+		{"fixed first", func(r *rig) { r.d.Fix(r.d.last.Dir, "Fixed.") }, clip.Corrected},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			r := newRig(t)
+			r.dictate(t, "en", false)
+			dir := r.d.last.Dir
+			tc.setup(r)
+			r.d.Accept()
+			if info, _ := clip.ReadInfo(dir); info.Status != tc.status {
+				t.Fatalf("status %s, want %s", info.Status, tc.status)
+			}
+		})
+	}
+}
+
 func TestOnlyTheLastDictationCanBeFixed(t *testing.T) {
 	r := newRig(t)
 	r.dictate(t, "en", false)

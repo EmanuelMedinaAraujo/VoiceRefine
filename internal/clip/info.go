@@ -11,15 +11,18 @@ import (
 	"time"
 )
 
+// A clip is untouched until it is accepted as right (verified) or fixed (corrected). Only
+// verified and corrected clips have a text that was checked.
 const (
 	Untouched = "untouched"
+	Verified  = "verified"
 	Corrected = "corrected"
 )
 
 // Info is info.txt: what the later export needs to pick and label a clip. It is plain
 // "key: value" lines so it can be read by eye and by any tool.
 type Info struct {
-	Status     string        // Untouched or Corrected
+	Status     string        // Untouched, Verified or Corrected
 	Time       time.Time     // when the key was pressed, which is where the audio starts
 	Length     time.Duration // length of audio.wav
 	Language   string        // the language the key asked for, as Voxtype names it (en, de)

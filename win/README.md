@@ -37,8 +37,9 @@ The same as on Linux:
 | hold Win+F9 / Win+F10 | the same, private: nothing is saved |
 | Ctrl+Win+X / Ctrl+Win+Alt+X | start and stop English / German, saved |
 | F5 | fix the last dictation, right after it was typed |
+| Shift+F5 | accept the last dictation as right, at the same time F5 would fix it |
 
-These keys never reach the app in front. F5 is the exception: once the last dictation can no longer be fixed in place, it reaches the app again, so a browser still reloads with it, just as on Linux.
+These keys never reach the app in front. F5 and Shift+F5 are the exception: once the last dictation can no longer be fixed in place, they reach the app again, so a browser still reloads with it, just as on Linux.
 
 The text goes into the window that was in front when the key went up. If another window comes to the front while the text is being written, VoiceRefine doesn't type it there and puts it on the clipboard instead. Text that VoiceRefine puts on the clipboard stays out of the Windows clipboard history and the cloud clipboard.
 
@@ -46,13 +47,15 @@ A tray icon (a microphone) shows the state: grey while it sets up or loads, blue
 
 ## What gets saved
 
-The saved folders match the Linux ones, under `%LOCALAPPDATA%\VoiceRefine\recordings\`, for example `2026\10\15\rec001\` with `audio.wav`, `info.txt`, `transcribed.txt` and, once fixed, `corrected.txt`. In `info.txt` the engine is `whisper`, the model `large-v3-turbo-q5_0`, and `power_mode` stays empty. Here the recording is exactly the audio the model received, so `woke_up` is always `no` and `listen_at_s` always `0.000`.
+The saved folders match the Linux ones, under `%LOCALAPPDATA%\VoiceRefine\recordings\`, for example `2026\10\15\rec001\` with `audio.wav`, `info.txt` (status `untouched`, `verified` or `corrected`), `transcribed.txt` and, once fixed, `corrected.txt`. In `info.txt` the engine is `whisper`, the model `large-v3-turbo-q5_0`, and `power_mode` stays empty. Here the recording is exactly the audio the model received, so `woke_up` is always `no` and `listen_at_s` always `0.000`.
 
 A dictation is not saved when it is private, when it is shorter than 0.3 s, or when it has no words. A dictation stops by itself after 60 s, like Voxtype, and is then marked `cut_at_limit: yes`.
 
-## Fixing a dictation
+## Accepting or fixing a dictation
 
 F5 opens the fix window with the last dictation, as on Linux, while the window it was typed into is still in front, no dictation started since, and the text is recent (20 s plus 0.1 s per character, at most 2 min). Enter saves the fix as `corrected.txt` and replaces the typed text, Shift+Enter starts a new line, and Escape or a click elsewhere closes the window. The tray menu opens the fix window at any time until the next dictation starts; a fix that can no longer replace the text goes to the clipboard.
+
+Shift+F5 accepts the last dictation as right, under the same conditions as F5: its status becomes `verified`, and a notification confirms it. A fixed dictation stays `corrected`. A dictation that is neither accepted nor fixed stays `untouched` and does not count as a label.
 
 ## Uninstall
 

@@ -7,6 +7,7 @@ package main
 //	Ctrl+Win+X             toggle English, saved
 //	Ctrl+Win+Alt+X         toggle German, saved
 //	F5                     fix the last dictation, shortly after it was typed
+//	Shift+F5               accept the last dictation as right, in the same time as F5
 const (
 	vkF5  = 0x74
 	vkF9  = 0x78
@@ -23,6 +24,7 @@ const (
 	keyStop
 	keyToggle
 	keyFix
+	keyAccept
 )
 
 type keyEvent struct {
@@ -34,7 +36,8 @@ type keyEvent struct {
 
 // hotkeys turns key presses into dictation events. Every press of a dictation key is swallowed
 // together with its repeats and its release, so the app in front never sees it. F5 is a dictation
-// key only while fixKey says so; otherwise it reaches the app, so a browser still reloads with it.
+// key only while fixKey says so, and Shift+F5 with it; otherwise they reach the app, so a browser
+// still reloads with them.
 type hotkeys struct {
 	held   map[uint32]bool
 	fixKey func() bool
@@ -72,6 +75,8 @@ func (h *hotkeys) handle(vk uint32, down bool, m mods) (swallow bool, ev *keyEve
 		}
 	case vk == vkF5 && m == mods{} && h.fixKey != nil && h.fixKey():
 		ev = &keyEvent{kind: keyFix}
+	case vk == vkF5 && m == mods{shift: true} && h.fixKey != nil && h.fixKey():
+		ev = &keyEvent{kind: keyAccept}
 	default:
 		return false, nil, false
 	}
@@ -93,6 +98,8 @@ func dispatch(events <-chan keyEvent, d *Dictation, fix func()) {
 			d.Toggle(ev.language)
 		case keyFix:
 			fix()
+		case keyAccept:
+			d.Accept()
 		}
 	}
 }

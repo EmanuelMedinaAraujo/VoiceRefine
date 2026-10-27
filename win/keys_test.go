@@ -34,10 +34,14 @@ func TestHotkeys(t *testing.T) {
 
 	step(vkF5, true, none, true, false, &keyEvent{kind: keyFix})
 	step(vkF5, false, none, true, false, nil)
+	step(vkF5, true, mods{shift: true}, true, false, &keyEvent{kind: keyAccept})
+	step(vkF5, false, none, true, false, nil)
 
 	// Once the fix can no longer replace the text, F5 reaches the app.
 	fixable = false
 	step(vkF5, true, none, false, false, nil)
+	step(vkF5, false, none, false, false, nil)
+	step(vkF5, true, mods{shift: true}, false, false, nil)
 	step(vkF5, false, none, false, false, nil)
 	fixable = true
 
