@@ -38,9 +38,15 @@ EOF
   restart_voxtype=1
 fi
 
-# 3. The shell plugin with the fix window.
+# 3. The shell plugin with the fix window. Installing the files does not enable it; Omarchy
+#    plugins are opt-in, so enable it now (best-effort: the shell may not be running yet).
 install -Dm644 shell/emu.voicerefine/* -t "$plugin_dir"
-
+if command -v omarchy-plugin-enable >/dev/null 2>&1; then
+  omarchy-plugin-enable emu.voicerefine >/dev/null 2>&1 || true
+elif command -v omarchy-shell >/dev/null 2>&1; then
+  omarchy-shell -q shell rescanPlugins >/dev/null 2>&1 || true
+  omarchy-shell -q shell enablePlugin emu.voicerefine '{}' >/dev/null 2>&1 || true
+fi
 # 4. The update check: after each Omarchy update, and once after each login.
 install -Dm755 setup/check-voicerefine.hook -t "$hooks"
 install -Dm644 setup/voicerefine-check.service setup/voicerefine-check.timer -t "$units"
