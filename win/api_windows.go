@@ -91,6 +91,7 @@ var (
 	pRegSetValueExW            = advapi32.NewProc("RegSetValueExW")
 	pRegDeleteValueW           = advapi32.NewProc("RegDeleteValueW")
 	pRegCloseKey               = advapi32.NewProc("RegCloseKey")
+	pRegGetValueW              = advapi32.NewProc("RegGetValueW")
 	pWaveInOpen                = winmm.NewProc("waveInOpen")
 	pWaveInClose               = winmm.NewProc("waveInClose")
 	pWaveInPrepareHeader       = winmm.NewProc("waveInPrepareHeader")
@@ -168,6 +169,7 @@ const (
 	mbYesNo            = 0x4
 	mbIconQuestion     = 0x20
 	mbIconError        = 0x10
+	mbIconInformation  = 0x40
 	idYes              = 6
 	hkeyCurrentUser    = 0x80000001
 	keySetValue        = 0x0002

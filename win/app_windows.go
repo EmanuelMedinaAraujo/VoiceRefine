@@ -34,11 +34,18 @@ func run() {
 	}
 	self, _ := os.Executable()
 
-	if len(os.Args) > 1 && os.Args[1] == "uninstall" {
+	// Apps runs the installed copy with "uninstall"; any copy, the download too, takes --uninstall.
+	if len(os.Args) > 1 && (os.Args[1] == "uninstall" || os.Args[1] == "--uninstall") {
 		uninstall(p, true)
 		return
 	}
 	if !samePath(self, p.Exe()) {
+		if installed := installedVersion(); olderThan(installed) {
+			messageBox(0, "VoiceRefine", "A newer VoiceRefine is installed ("+installed+"), so this older copy ("+version+
+				") does not replace it.\n\nTo go back to this one, uninstall first: run it with --uninstall, or use Settings › Apps. Then run it again.",
+				mbIconInformation)
+			return
+		}
 		if err := install(p, self); err != nil {
 			messageBox(0, "VoiceRefine", "Installing failed: "+err.Error(), mbIconError)
 		}
@@ -49,7 +56,7 @@ func run() {
 		return
 	}
 	openLog(p)
-	log.Printf("VoiceRefine starts")
+	log.Printf("VoiceRefine %s starts", version)
 
 	u := newUI()
 	registerClass(fixClass, colorWindow+1)

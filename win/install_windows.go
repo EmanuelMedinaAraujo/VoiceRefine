@@ -66,6 +66,9 @@ func stopOthers() {
 	cmd.Run() // fails when there is nothing to end
 }
 
+// installedVersion is the version of the installed VoiceRefine, as Apps lists it.
+func installedVersion() string { return regGet(uninstallKey, "DisplayVersion") }
+
 // install copies this exe into place, has Windows start it at login and list it under Apps, and
 // starts it. Running a newer exe the same way updates VoiceRefine: the old one is ended, and what
 // it left behind that this one does not use is deleted.
@@ -105,6 +108,7 @@ func install(p Paths, self string) error {
 		"Publisher":       "Emanuel Medina",
 		"InstallLocation": p.Program,
 		"UninstallString": exe + " uninstall",
+		"DisplayVersion":  version,
 	} {
 		if err := regSet(uninstallKey, name, value); err != nil {
 			return err
@@ -148,6 +152,7 @@ func uninstall(p Paths, ask bool) {
 		return
 	}
 	stopRunning()
+	stopOthers()
 	removeProgram(p)
 }
 
@@ -177,6 +182,18 @@ func regSet(key, name, value string) error {
 		return fmt.Errorf("registry %s\\%s: error %d", key, name, r)
 	}
 	return nil
+}
+
+// regGet reads a text value, or "" when it is not there.
+func regGet(key, name string) string {
+	const rrfRtRegSZ = 0x2
+	buf := make([]uint16, 256)
+	size := uint32(len(buf) * 2)
+	if r, _, _ := pRegGetValueW.Call(hkeyCurrentUser, uintptr(unsafe.Pointer(wstr(key))), uintptr(unsafe.Pointer(wstr(name))),
+		rrfRtRegSZ, 0, uintptr(unsafe.Pointer(&buf[0])), uintptr(unsafe.Pointer(&size))); r != 0 {
+		return ""
+	}
+	return syscall.UTF16ToString(buf)
 }
 
 func regDelete(key, name string) {

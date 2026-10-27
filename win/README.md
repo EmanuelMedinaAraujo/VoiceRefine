@@ -23,6 +23,8 @@ If Windows lacks the Visual C++ runtime that whisper.cpp needs, VoiceRefine runs
 
 To update, run a newer `VoiceRefine.exe` the same way. It ends every running VoiceRefine, wherever it was started from, replaces the installed copy, and deletes what an older version left in the program folder and no longer needs, such as a model this version does not use. The engine, the model and the dictations stay.
 
+Each build carries a version: the time of the commit it was built from, in UTC, and the commit, for example `20261027.221110-e68249f`. Settings › Apps shows it. An older `VoiceRefine.exe` does not replace a newer installed one; it says so and changes nothing. To go back, uninstall first, then run the older copy.
+
 Windows may warn about an unknown publisher when the file came from the internet. Choose *More info › Run anyway*.
 
 ## Keys
@@ -54,7 +56,13 @@ F5 opens the fix window with the last dictation, as on Linux, while the window i
 
 ## Uninstall
 
-Settings › Apps › VoiceRefine › Uninstall, or *Uninstall VoiceRefine…* in the tray menu. This removes the program, the engine and the model. The dictations and the logs stay in `%LOCALAPPDATA%\VoiceRefine\`.
+Settings › Apps › VoiceRefine › Uninstall, *Uninstall VoiceRefine…* in the tray menu, or any copy of the exe, such as the one in Downloads, run with `--uninstall`:
+
+```
+.\VoiceRefine.exe --uninstall
+```
+
+It asks first, then ends every running VoiceRefine. This removes the program, the engine and the model. The dictations and the logs stay in `%LOCALAPPDATA%\VoiceRefine\`.
 
 ## When something is off
 
