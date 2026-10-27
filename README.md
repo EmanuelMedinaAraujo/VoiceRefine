@@ -28,7 +28,7 @@ The numbers count up through the day. A take that gets no text (a cancel, a take
 
 ## Fixing a dictation
 
-F5 opens the fix window with the last dictation. Enter saves the fix as `corrected.txt`, Escape closes. The last dictation can be fixed until the next one starts. While the same window is still in front and the text is recent (20 s plus 0.1 s per character, at most 2 min), the fix replaces the typed text in the app; otherwise it goes to the clipboard. A dictation that is not fixed counts as correct.
+F5 opens the fix window with the last dictation while the window it was typed into is still in front, no dictation started since, and the text is recent (20 s plus 0.1 s per character, at most 2 min). Otherwise F5 goes on to the app, so a browser still reloads with it. Enter saves the fix as `corrected.txt` and replaces the typed text in the app, Escape closes. If the focus moved or the time ran out while the window was open, the fix goes to the clipboard instead. A dictation that is not fixed counts as correct.
 
 ## How it works
 

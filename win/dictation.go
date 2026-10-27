@@ -347,10 +347,24 @@ func (d *Dictation) Fix(dir, text string) error {
 	return nil
 }
 
+// FixKey is true while F5 opens the fix window: while the fix can replace the typed text, with
+// the same window in front, no dictation since, and the text recent. The keyboard hook asks it.
+func (d *Dictation) FixKey() bool {
+	d.mu.Lock()
+	l, lastPress := d.last, d.lastPress
+	d.mu.Unlock()
+	return l != nil && d.inTime(*l, lastPress) && d.Desktop.Foreground() == l.Window
+}
+
+// inTime is true while no dictation started since and the text was typed only a short time ago.
+func (d *Dictation) inTime(l Last, lastPress time.Time) bool {
+	return l.Window != 0 && !lastPress.After(l.TypedAt) && d.Now().Sub(l.TypedAt) <= replaceLimit(l.InApp)
+}
+
 // canReplace is true while the same window is in front, no dictation started since, and the
 // text was typed only a short time ago.
 func (d *Dictation) canReplace(l Last, lastPress time.Time) bool {
-	if l.Window == 0 || lastPress.After(l.TypedAt) || d.Now().Sub(l.TypedAt) > replaceLimit(l.InApp) {
+	if !d.inTime(l, lastPress) {
 		return false
 	}
 	for end := d.Now().Add(focusWait); ; time.Sleep(25 * time.Millisecond) {

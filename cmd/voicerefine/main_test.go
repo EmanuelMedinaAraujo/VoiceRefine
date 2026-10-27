@@ -390,6 +390,36 @@ func TestOnlyTheLastDictationCanBeFixed(t *testing.T) {
 	}
 }
 
+func TestF5OpensTheFixOnlyWhileItCanReplaceTheText(t *testing.T) {
+	const summon, pass = `omarchy-shell shell summon emu.voicerefine {}`, `hyprctl dispatch hl.dsp.send_shortcut({ mods = "", key = "F5" })`
+	for _, tc := range []struct {
+		name  string
+		setup func(r *rig)
+		want  string
+	}{
+		{"just typed", func(r *rig) { dictate(r, "Helo") }, summon},
+		{"nothing saved", func(r *rig) {}, pass},
+		{"another window", func(r *rig) { dictate(r, "Helo"); r.window = "0xother" }, pass},
+		{"too late", func(r *rig) {
+			dictate(r, "Helo")
+			r.a.Now = func() time.Time { return time.Now().Add(replaceLimit("Helo") + time.Second) }
+		}, pass},
+		{"newer dictation", func(r *rig) { dictate(r, "Helo"); r.key("start", "en") }, pass},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			r := newRig(t)
+			tc.setup(r)
+			r.commands = nil
+			if err := r.a.fixKey(nil); err != nil {
+				t.Fatal(err)
+			}
+			if got := r.commands[len(r.commands)-1]; got != tc.want {
+				t.Fatalf("F5 ran %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
 func TestAnEmptyFixChangesNothing(t *testing.T) {
 	r := newRig(t)
 	dir := dictate(r, "Text.")

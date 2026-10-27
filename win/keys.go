@@ -6,7 +6,7 @@ package main
 //	Win+F9 / Win+F10       the same, private: nothing is saved
 //	Ctrl+Win+X             toggle English, saved
 //	Ctrl+Win+Alt+X         toggle German, saved
-//	F5                     fix the last dictation
+//	F5                     fix the last dictation, shortly after it was typed
 const (
 	vkF5  = 0x74
 	vkF9  = 0x78
@@ -33,9 +33,11 @@ type keyEvent struct {
 }
 
 // hotkeys turns key presses into dictation events. Every press of a dictation key is swallowed
-// together with its repeats and its release, so the app in front never sees it.
+// together with its repeats and its release, so the app in front never sees it. F5 is a dictation
+// key only while fixKey says so; otherwise it reaches the app, so a browser still reloads with it.
 type hotkeys struct {
-	held map[uint32]bool
+	held   map[uint32]bool
+	fixKey func() bool
 }
 
 // handle returns whether to swallow the key and what it asks for. mask is true when a swallowed
@@ -68,7 +70,7 @@ func (h *hotkeys) handle(vk uint32, down bool, m mods) (swallow bool, ev *keyEve
 		if m.alt {
 			ev.language = "de"
 		}
-	case vk == vkF5 && m == mods{}:
+	case vk == vkF5 && m == mods{} && h.fixKey != nil && h.fixKey():
 		ev = &keyEvent{kind: keyFix}
 	default:
 		return false, nil, false

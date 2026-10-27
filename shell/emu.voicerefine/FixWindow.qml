@@ -6,7 +6,7 @@ import qs.Commons
 import qs.Ui
 
 // The fix window: one text box with the last dictation. Enter saves the fix, Escape closes,
-// Shift+Enter adds a line break. Opened by F5, through `omarchy-shell shell summon emu.voicerefine`.
+// Shift+Enter adds a line break. Opened by F5, through `voicerefine fixkey`, which summons it.
 Item {
   id: root
 

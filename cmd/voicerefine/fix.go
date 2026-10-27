@@ -84,6 +84,27 @@ func (a *App) lastCmd(args []string) error {
 	return json.NewEncoder(a.Out).Encode(out)
 }
 
+// fixKey is what F5 runs. It opens the fix window only while the fix can replace the typed text:
+// the same window in front, no dictation since, and the text recent. Otherwise F5 goes on to the
+// app, so a browser still reloads with it.
+func (a *App) fixKey(args []string) error {
+	if len(args) != 0 {
+		return errUsage
+	}
+	var open bool
+	a.locked(func() error {
+		l, _ := a.fixable()
+		open = l != nil && a.inTime(l) && a.activeWindow() == l.Window
+		return nil
+	})
+	if open {
+		_, err := a.Command("", "omarchy-shell", "shell", "summon", "emu.voicerefine", "{}")
+		return err
+	}
+	_, err := a.Command("", "hyprctl", "dispatch", `hl.dsp.send_shortcut({ mods = "", key = "F5" })`)
+	return err
+}
+
 // fix saves the text read from stdin as the dictation's correct text, and puts it in the app.
 //
 //	voicerefine fix <dir> < text
@@ -145,10 +166,15 @@ func (a *App) fix(args []string) error {
 	return a.toClipboard(text)
 }
 
+// inTime is true while no dictation started since and the text was typed only a short time ago.
+func (a *App) inTime(l *Last) bool {
+	return l.Window != "" && !a.lastPress().After(l.TypedAt) && a.Now().Sub(l.TypedAt) <= replaceLimit(l.InApp)
+}
+
 // canReplace is true while the same window is in front, no dictation started since, and the
 // text was typed only a short time ago.
 func (a *App) canReplace(l *Last) bool {
-	if l.Window == "" || a.lastPress().After(l.TypedAt) || a.Now().Sub(l.TypedAt) > replaceLimit(l.InApp) {
+	if !a.inTime(l) {
 		return false
 	}
 	for end := a.Now().Add(focusWait); ; time.Sleep(25 * time.Millisecond) {

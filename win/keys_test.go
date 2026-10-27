@@ -3,7 +3,8 @@ package main
 import "testing"
 
 func TestHotkeys(t *testing.T) {
-	var h hotkeys
+	fixable := true
+	h := hotkeys{fixKey: func() bool { return fixable }}
 	none, win, ctrlWin, ctrlWinAlt := mods{}, mods{win: true}, mods{ctrl: true, win: true}, mods{ctrl: true, win: true, alt: true}
 
 	step := func(vk uint32, down bool, m mods, wantSwallow, wantMask bool, want *keyEvent) {
@@ -33,6 +34,12 @@ func TestHotkeys(t *testing.T) {
 
 	step(vkF5, true, none, true, false, &keyEvent{kind: keyFix})
 	step(vkF5, false, none, true, false, nil)
+
+	// Once the fix can no longer replace the text, F5 reaches the app.
+	fixable = false
+	step(vkF5, true, none, false, false, nil)
+	step(vkF5, false, none, false, false, nil)
+	fixable = true
 
 	// Everything else reaches the app: Ctrl+F5, Shift+F9, a plain X, and their releases.
 	step(vkF5, true, mods{ctrl: true}, false, false, nil)

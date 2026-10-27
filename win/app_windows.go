@@ -16,7 +16,7 @@ import (
 )
 
 const keysHelp = "Hold F9 (English) or F10 (German) while you speak. Win+F9 and Win+F10 save nothing. " +
-	"Ctrl+Win+X and Ctrl+Win+Alt+X start and stop. F5 fixes the last dictation."
+	"Ctrl+Win+X and Ctrl+Win+Alt+X start and stop. F5 fixes the last dictation right after it was typed."
 
 func run() {
 	runtime.LockOSThread() // windows, the tray and the keyboard hook belong to this thread
@@ -116,6 +116,7 @@ func (a *app) start(welcome bool) {
 
 	a.ui.addTray("setup", "VoiceRefine")
 	a.showState()
+	a.ui.keys.fixKey = a.dict.FixKey
 	if err := a.ui.hookKeys(); err != nil {
 		messageBox(0, "VoiceRefine", "The dictation keys could not be set up: "+err.Error(), mbIconError)
 	}

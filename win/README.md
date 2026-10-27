@@ -34,9 +34,9 @@ The same as on Linux:
 | hold F9 / F10 | dictate English / German, saved |
 | hold Win+F9 / Win+F10 | the same, private: nothing is saved |
 | Ctrl+Win+X / Ctrl+Win+Alt+X | start and stop English / German, saved |
-| F5 | fix the last dictation |
+| F5 | fix the last dictation, right after it was typed |
 
-These keys never reach the app in front, so F5 no longer reloads a browser page, just as on Linux.
+These keys never reach the app in front. F5 is the exception: once the last dictation can no longer be fixed in place, it reaches the app again, so a browser still reloads with it, just as on Linux.
 
 The text goes into the window that was in front when the key went up. If another window comes to the front while the text is being written, VoiceRefine doesn't type it there and puts it on the clipboard instead. Text that VoiceRefine puts on the clipboard stays out of the Windows clipboard history and the cloud clipboard.
 
@@ -50,7 +50,7 @@ A dictation is not saved when it is private, when it is shorter than 0.3 s, or w
 
 ## Fixing a dictation
 
-F5 opens the fix window with the last dictation, as on Linux: Enter saves the fix as `corrected.txt`, Shift+Enter starts a new line, and Escape or a click elsewhere closes the window. If the same window is still in front and the text is recent (20 s plus 0.1 s per character, at most 2 min), the fix replaces the typed text. Otherwise it goes to the clipboard.
+F5 opens the fix window with the last dictation, as on Linux, while the window it was typed into is still in front, no dictation started since, and the text is recent (20 s plus 0.1 s per character, at most 2 min). Enter saves the fix as `corrected.txt` and replaces the typed text, Shift+Enter starts a new line, and Escape or a click elsewhere closes the window. The tray menu opens the fix window at any time until the next dictation starts; a fix that can no longer replace the text goes to the clipboard.
 
 ## Uninstall
 
