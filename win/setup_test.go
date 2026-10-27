@@ -191,3 +191,33 @@ func TestEngineLogKeepsNothingAboutDictations(t *testing.T) {
 		}
 	}
 }
+
+func TestRemoveLeftoversKeepsOnlyWhatThisVersionUses(t *testing.T) {
+	p := Paths{Program: t.TempDir()}
+	for _, path := range []string{
+		p.Exe(), filepath.Join(p.Engine(), "whisper-server.exe"), p.Model(), p.Model() + ".part",
+		filepath.Join(p.Program, "engine.zip.part"),
+		// left by older versions or broken-off updates
+		filepath.Join(p.Program, "models", "ggml-large-v3.bin"), filepath.Join(p.Program, "models", "ggml-large-v3.bin.part"),
+		filepath.Join(p.Program, "engine.new", "whisper.dll"), filepath.Join(p.Program, "engine.zip"),
+		p.Exe() + ".new", filepath.Join(p.Program, "vc_redist.x64.exe"),
+	} {
+		os.MkdirAll(filepath.Dir(path), 0o755)
+		os.WriteFile(path, []byte("x"), 0o644)
+	}
+	p.removeLeftovers()
+	var left []string
+	filepath.WalkDir(p.Program, func(path string, d os.DirEntry, err error) error {
+		if !d.IsDir() {
+			rel, _ := filepath.Rel(p.Program, path)
+			left = append(left, filepath.ToSlash(rel))
+		}
+		return nil
+	})
+	want := []string{"VoiceRefine.exe", "engine.zip.part", "engine/whisper-server.exe", "models/" + modelFile, "models/" + modelFile + ".part"}
+	sort.Strings(left)
+	sort.Strings(want)
+	if strings.Join(left, " ") != strings.Join(want, " ") {
+		t.Fatalf("left %q, want %q", left, want)
+	}
+}

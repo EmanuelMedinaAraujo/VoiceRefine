@@ -79,6 +79,24 @@ func (p Paths) Recordings() string { return filepath.Join(p.Data, "recordings") 
 func (p Paths) Log() string        { return filepath.Join(p.Data, "voicerefine.log") }
 func (p Paths) EngineLog() string  { return filepath.Join(p.Data, "engine.log") }
 
+// removeLeftovers deletes what an older version left in the program folder: a model it used that
+// this one does not, and half-done updates. The engine and this model's download stay, even half
+// done, so a broken-off download goes on.
+func (p Paths) removeLeftovers() {
+	keep := map[string]bool{
+		p.Exe(): true, p.Engine(): true, filepath.Dir(p.Model()): true,
+		p.Model(): true, p.Model() + ".part": true, filepath.Join(p.Program, "engine.zip.part"): true,
+	}
+	for _, dir := range []string{p.Program, filepath.Dir(p.Model())} {
+		entries, _ := os.ReadDir(dir)
+		for _, e := range entries {
+			if path := filepath.Join(dir, e.Name()); !keep[path] {
+				os.RemoveAll(path)
+			}
+		}
+	}
+}
+
 // engineSource names the release an installed engine came from.
 func (p Paths) engineSource() string { return filepath.Join(p.Engine(), "source.txt") }
 

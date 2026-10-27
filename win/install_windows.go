@@ -56,10 +56,22 @@ func stopRunning() {
 	}
 }
 
+// stopOthers ends every other VoiceRefine.exe, wherever it was started from: one that did not quit
+// when asked, or an older copy run from another folder. Its engine ends with it, through the job.
+func stopOthers() {
+	cmd := exec.Command(filepath.Join(system32(), "taskkill.exe"), "/F", "/IM", "VoiceRefine.exe",
+		"/FI", fmt.Sprintf("PID ne %d", os.Getpid()))
+	cmd.Dir = system32()
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: createNoWindow}
+	cmd.Run() // fails when there is nothing to end
+}
+
 // install copies this exe into place, has Windows start it at login and list it under Apps, and
-// starts it. Running a newer exe the same way updates VoiceRefine.
+// starts it. Running a newer exe the same way updates VoiceRefine: the old one is ended, and what
+// it left behind that this one does not use is deleted.
 func install(p Paths, self string) error {
 	stopRunning()
+	stopOthers()
 	if err := os.MkdirAll(p.Program, 0o755); err != nil {
 		return err
 	}
@@ -81,6 +93,7 @@ func install(p Paths, self string) error {
 		os.Remove(staged)
 		return fmt.Errorf("could not replace %s: %w", p.Exe(), err)
 	}
+	p.removeLeftovers()
 
 	exe := `"` + p.Exe() + `"`
 	if err := regSet(runKey, "VoiceRefine", exe); err != nil {

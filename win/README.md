@@ -21,7 +21,7 @@ Copy `VoiceRefine.exe` to the Windows machine and double-click it. You don't nee
 
 If Windows lacks the Visual C++ runtime that whisper.cpp needs, VoiceRefine runs Microsoft's installer for it. That installer asks once for permission. If the download breaks off, VoiceRefine continues it every minute.
 
-To update, run a newer `VoiceRefine.exe` the same way. It replaces the running copy and keeps the engine, the model and the dictations.
+To update, run a newer `VoiceRefine.exe` the same way. It ends every running VoiceRefine, wherever it was started from, replaces the installed copy, and deletes what an older version left in the program folder and no longer needs, such as a model this version does not use. The engine, the model and the dictations stay.
 
 Windows may warn about an unknown publisher when the file came from the internet. Choose *More info › Run anyway*.
 
