@@ -2,10 +2,12 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -58,7 +60,10 @@ type rig struct {
 	typed     []string
 	window    string // the focused window's Hyprland address
 	clipboard string
-	binds     string // hyprctl binds -j
+	copies    []string // the arguments and content of each wl-copy
+	copied    string   // what wl-paste reads; empty when nothing was copied
+	tags      string   // the focused window's Hyprland tags, as JSON
+	binds     string   // hyprctl binds -j
 	notified  []string
 }
 
@@ -110,6 +115,9 @@ func (r *rig) command(stdin, name string, args ...string) (string, error) {
 		if args[0] == "binds" {
 			return r.binds, nil
 		}
+		if r.tags != "" {
+			return `{"address": "` + r.window + `", "tags": ` + r.tags + `}`, nil
+		}
 		return `{"address": "` + r.window + `"}`, nil
 	case "notify-send":
 		r.notified = append(r.notified, strings.Join(args, " "))
@@ -117,6 +125,15 @@ func (r *rig) command(stdin, name string, args ...string) (string, error) {
 		r.typed = append(r.typed, strings.Join(args, " ")+stdin)
 	case "wl-copy":
 		r.clipboard = stdin
+		r.copies = append(r.copies, strings.Join(args, " ")+"="+stdin)
+	case "wl-paste":
+		if r.copied == "" {
+			return "", errors.New("nothing is copied")
+		}
+		if args[0] == "--list-types" {
+			return "x-kde-passwordManagerHint\ntext/html\ntext/plain;charset=utf-8\n", nil
+		}
+		return r.copied, nil
 	}
 	return "", nil
 }
@@ -341,8 +358,8 @@ func TestFixReplacesTheTextInTheSameWindow(t *testing.T) {
 	if info.Status != clip.Corrected || !info.FixOpened {
 		t.Fatalf("info = %+v", info)
 	}
-	if len(r.typed) != 2 || strings.Count(r.typed[0], "BackSpace") != 10 || r.typed[1] != "-d 1 -Hello world" {
-		t.Fatalf("typed = %q, want 10 backspaces then the fix", r.typed)
+	if len(r.typed) != 2 || strings.Count(r.typed[0], "BackSpace") != 10 || r.typed[1] != "-M ctrl -k v -m ctrl" {
+		t.Fatalf("typed = %q, want 10 backspaces then the paste key", r.typed)
 	}
 	if l := r.a.last(); l.InApp != "Hello world" {
 		t.Fatalf("the app now holds %q", l.InApp)
@@ -354,6 +371,39 @@ func TestFixReplacesTheTextInTheSameWindow(t *testing.T) {
 	}
 	if info, _ := clip.ReadInfo(dir); info.Status != clip.Untouched {
 		t.Fatalf("status %s", info.Status)
+	}
+}
+
+func TestFixPastesWithoutReachingTheClipboardHistory(t *testing.T) {
+	r := newRig(t)
+	dir := dictate(r, "Helo")
+	r.copied = "before\n"
+	r.fix(dir, "Hello")
+	want := []string{
+		"--sensitive --type text/plain=Hello",
+		"--sensitive --type text/plain;charset=utf-8=before\n",
+	}
+	if !slices.Equal(r.copies, want) {
+		t.Fatalf("wl-copy ran %q, want %q", r.copies, want)
+	}
+}
+
+func TestFixEmptiesTheClipboardItFoundEmpty(t *testing.T) {
+	r := newRig(t)
+	dir := dictate(r, "Helo")
+	r.fix(dir, "Hello")
+	if got := r.copies[len(r.copies)-1]; got != "--clear=" {
+		t.Fatalf("last wl-copy = %q, want the clipboard cleared", got)
+	}
+}
+
+func TestFixPastesWithTheTerminalKeyInATerminal(t *testing.T) {
+	r := newRig(t)
+	dir := dictate(r, "Helo")
+	r.tags = `["default-opacity*", "terminal*"]`
+	r.fix(dir, "Hello")
+	if got := r.typed[len(r.typed)-1]; got != "-M shift -k Insert -m shift" {
+		t.Fatalf("paste key = %q", got)
 	}
 }
 

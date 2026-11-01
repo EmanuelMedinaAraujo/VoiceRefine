@@ -21,6 +21,7 @@ const (
 	replacePerChar = 100 * time.Millisecond
 	replaceMax     = 2 * time.Minute
 	focusWait      = 700 * time.Millisecond // the fix window closing hands the focus back
+	pasteWait      = 500 * time.Millisecond // the app reads the clipboard after the paste key
 )
 
 func replaceLimit(text string) time.Duration {
@@ -219,8 +220,9 @@ func (a *App) canReplace(l *Last) bool {
 	}
 }
 
-// replaceInApp deletes the typed text with backspaces and types the fixed text, both with wtype,
-// which Voxtype types with too.
+// replaceInApp deletes the typed text with backspaces and pastes the fixed text: typing it could
+// drop characters. The clipboard only holds the fix for the paste, and is marked sensitive so the
+// clipboard history skips it.
 func (a *App) replaceInApp(old, text string) error {
 	keys := []string{"-d", "1"}
 	for range utf8.RuneCountInString(old) {
@@ -229,8 +231,74 @@ func (a *App) replaceInApp(old, text string) error {
 	if _, err := a.Command("", "wtype", keys...); err != nil {
 		return err
 	}
-	_, err := a.Command(text, "wtype", "-d", "1", "-")
-	return err
+	restore := a.saveClipboard()
+	if _, err := a.Command(text, "wl-copy", "--sensitive", "--type", "text/plain"); err != nil {
+		return err
+	}
+	paste := []string{"-M", "ctrl", "-k", "v", "-m", "ctrl"}
+	if a.activeWindowIsTerminal() {
+		paste = []string{"-M", "shift", "-k", "Insert", "-m", "shift"}
+	}
+	if _, err := a.Command("", "wtype", paste...); err != nil {
+		return err
+	}
+	time.Sleep(pasteWait)
+	restore()
+	return nil
+}
+
+// activeWindowIsTerminal uses the tag Omarchy gives terminals, as its own paste key does.
+func (a *App) activeWindowIsTerminal() bool {
+	out, err := a.Command("", "hyprctl", "activewindow", "-j")
+	if err != nil {
+		return false
+	}
+	var w struct {
+		Tags []string `json:"tags"`
+	}
+	json.Unmarshal([]byte(out), &w)
+	for _, tag := range w.Tags {
+		if strings.TrimSuffix(tag, "*") == "terminal" {
+			return true
+		}
+	}
+	return false
+}
+
+// saveClipboard returns what puts the current clipboard back. It keeps one type of the content,
+// and is sensitive too: the history already has the content, and should not see it anew.
+func (a *App) saveClipboard() (restore func()) {
+	clear := func() { a.Command("", "wl-copy", "--clear") }
+	types, err := a.Command("", "wl-paste", "--list-types")
+	if err != nil {
+		return clear
+	}
+	mime := clipboardType(strings.Fields(strings.ReplaceAll(types, " ", "\x00")))
+	if mime == "" {
+		return clear
+	}
+	content, err := a.Command("", "wl-paste", "--type", mime)
+	if err != nil {
+		return clear
+	}
+	return func() { a.Command(content, "wl-copy", "--sensitive", "--type", mime) }
+}
+
+// clipboardType picks the type that keeps the most of what was copied.
+func clipboardType(types []string) string {
+	for _, want := range []string{"text/uri-list", "image/", "text/plain;charset=utf-8", "text/plain", "UTF8_STRING"} {
+		for _, t := range types {
+			if t == want || strings.HasSuffix(want, "/") && strings.HasPrefix(t, want) {
+				return t
+			}
+		}
+	}
+	for _, t := range types {
+		if t != "x-kde-passwordManagerHint" {
+			return t
+		}
+	}
+	return ""
 }
 
 func (a *App) toClipboard(text string) error {
